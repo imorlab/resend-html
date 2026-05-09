@@ -3,26 +3,44 @@ import { supabase } from './lib/supabase'
 import Login from './components/Login'
 import EmailSender from './components/EmailSender'
 
+interface AppSession {
+  access_token: string
+  email: string
+}
+
 export default function App() {
-  const [session, setSession] = useState<{ access_token: string } | null>(null)
+  const [session, setSession] = useState<AppSession | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Al montar: restaurar sesion existente
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setSession({ access_token: session.access_token })
+    // Verificar que la sesion almacenada realmente es valida (no expirada ni corrupta)
+    supabase.auth.getSession().then(async ({ data: { session: storedSession } }) => {
+      if (storedSession) {
+        // Validar contra el servidor que el token sigue siendo valido
+        const { data: { user }, error } = await supabase.auth.getUser(storedSession.access_token)
+        if (user && !error) {
+          setSession({
+            access_token: storedSession.access_token,
+            email: user.email ?? '',
+          })
+        }
+        // Si el token expiro o es invalido: cerrar sesion silenciosamente
       }
       setLoading(false)
     })
 
-    // Suscribirse a cambios de autenticacion (login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        setSession({ access_token: session.access_token })
-      } else {
-        setSession(null)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, authSession) => {
+      if (authSession) {
+        const { data: { user } } = await supabase.auth.getUser(authSession.access_token)
+        if (user) {
+          setSession({
+            access_token: authSession.access_token,
+            email: user.email ?? '',
+          })
+          return
+        }
       }
+      setSession(null)
     })
 
     return () => subscription.unsubscribe()
@@ -48,5 +66,11 @@ export default function App() {
     return <Login onLogin={() => {}} />
   }
 
-  return <EmailSender accessToken={session.access_token} onLogout={handleLogout} />
+  return (
+    <EmailSender
+      accessToken={session.access_token}
+      userEmail={session.email}
+      onLogout={handleLogout}
+    />
+  )
 }

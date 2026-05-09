@@ -14,6 +14,7 @@ import type { UIState, UIAction, SendEmailResponse } from '../types/email';
 
 interface EmailSenderProps {
   accessToken: string
+  userEmail: string
   onLogout: () => void
 }
 
@@ -36,7 +37,7 @@ function uiReducer(_state: UIState, action: UIAction): UIState {
   }
 }
 
-export default function EmailSender({ accessToken, onLogout }: EmailSenderProps) {
+export default function EmailSender({ accessToken, userEmail, onLogout }: EmailSenderProps) {
   const [htmlContent, setHtmlContent] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [dragError, setDragError] = useState<string | null>(null);
@@ -287,7 +288,7 @@ export default function EmailSender({ accessToken, onLogout }: EmailSenderProps)
             Envio masivo de emails HTML
           </h1>
           <p className="mt-1 text-sm text-[var(--neo-text-muted)]">
-            Redacta tu HTML, añade destinatarios y envia hasta {MAX_RECIPIENTS} emails a traves de Resend.
+            {userEmail} · hasta {MAX_RECIPIENTS} destinatarios
           </p>
         </div>
         <button
