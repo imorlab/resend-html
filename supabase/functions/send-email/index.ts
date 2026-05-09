@@ -245,10 +245,11 @@ Deno.serve(async (req: Request) => {
 
   // ---- 3. Inicializar clientes ----
   const resendApiKey = Deno.env.get('RESEND_API_KEY')!;
+  const resendFrom = Deno.env.get('RESEND_FROM')!;
   const supabaseUrl = Deno.env.get('SB_URL')!;
   const supabaseServiceKey = Deno.env.get('SB_SERVICE_KEY')!;
 
-  if (!resendApiKey || !supabaseUrl || !supabaseServiceKey) {
+  if (!resendApiKey || !resendFrom || !supabaseUrl || !supabaseServiceKey) {
     return new Response(
       JSON.stringify({ success: false, sent: 0, failed: recipients.length, errors: [{ email: '', error: 'Configuración del servidor incompleta' }] }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -265,7 +266,7 @@ Deno.serve(async (req: Request) => {
   const sendPromises = recipients.map(async (recipient) => {
     try {
       const { error } = await resend.emails.send({
-        from: 'noreply@tudominio.com', // ⚠️ Cambiar por el remitente verificado en Resend
+        from: resendFrom,
         to: recipient,
         subject,
         html: sanitizedHtml,
