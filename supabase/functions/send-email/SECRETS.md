@@ -7,6 +7,7 @@ supabase secrets set RESEND_API_KEY=re_xxxxxxxxxxxx
 supabase secrets set RESEND_FROM="Tu Nombre <tu@email.com>"
 supabase secrets set SB_URL=https://xxxxxxxxxxxx.supabase.co
 supabase secrets set SB_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+supabase secrets set RESEND_API_KEY=re_xxxxxxxxxxxx --project-ref kxgihptzlspqqwcxzxqd
 ```
 
 ## Obtencion de cada secreto

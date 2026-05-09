@@ -1,7 +1,7 @@
 // ============================================================================
-// EmailSender.tsx — Componente principal de envío masivo de emails HTML.
+// EmailSender.tsx — Componente principal de envio masivo de emails HTML.
 // ============================================================================
-// Sistema de diseño neomorfico:
+// Sistema de diseno neomorfico:
 //   - Sombras definen profundidad (no se usa border decorativo)
 //   - Superficies comparten --neo-bg / --neo-surface
 //   - --neo-accent solo en boton primario y :focus-visible
@@ -9,7 +9,7 @@
 //   - border-radius minimo 12px en todo elemento
 // ============================================================================
 
-import { type FormEvent, type DragEvent, type KeyboardEvent, type ChangeEvent, useState, useReducer, useRef, useCallback } from 'react';
+import { type FormEvent, type DragEvent, type KeyboardEvent, type ChangeEvent, useState, useReducer, useRef, useCallback, useEffect } from 'react';
 import type { UIState, UIAction, SendEmailResponse } from '../types/email';
 
 const MAX_RECIPIENTS = 50;
@@ -49,6 +49,27 @@ export default function EmailSender() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewFrameRef = useRef<HTMLIFrameElement>(null);
+  const autoDismissRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // ---- Auto-dismiss del popup en exito (efecto secundario legitimo: temporizador DOM) ----
+  const resetForm = useCallback(() => {
+    dispatch({ type: 'RESET' });
+    setHtmlContent('');
+    setRecipients([]);
+    setSubject('');
+    setEmailInput('');
+    setEmailError(null);
+    setDragError(null);
+    setShowErrorDetails(false);
+    setInputMode('textarea');
+  }, []);
+
+  useEffect(() => {
+    if (uiState.type === 'success') {
+      autoDismissRef.current = setTimeout(resetForm, 3500);
+      return () => clearTimeout(autoDismissRef.current);
+    }
+  }, [uiState.type, resetForm]);
 
   // ---- HTML Content Handlers ----
 
@@ -240,17 +261,6 @@ export default function EmailSender() {
     }
   }, [htmlContent, recipients, subject]);
 
-  const handleReset = useCallback(() => {
-    dispatch({ type: 'RESET' });
-    setHtmlContent('');
-    setRecipients([]);
-    setSubject('');
-    setEmailInput('');
-    setEmailError(null);
-    setDragError(null);
-    setInputMode('textarea');
-  }, []);
-
   const canSubmit =
     uiState.type === 'idle' &&
     htmlContent.trim().length > 0 &&
@@ -259,6 +269,8 @@ export default function EmailSender() {
 
   const isTextareaDisabled = inputMode === 'dropzone';
   const isDropzoneDisabled = inputMode === 'textarea' && htmlContent.length > 0;
+
+  const popupVisible = uiState.type === 'success' || uiState.type === 'partial' || uiState.type === 'error';
 
   // ---- Render ----
 
@@ -280,9 +292,9 @@ export default function EmailSender() {
         noValidate
       >
 
-        {/* ================================================== */}
+        {/* ============================================================ */}
         {/* SECCION A: Contenido HTML                                     */}
-        {/* ================================================== */}
+        {/* ============================================================ */}
         <fieldset>
           <legend className="mb-3 text-lg font-semibold text-[var(--neo-text-primary)]">
             Contenido HTML
@@ -471,7 +483,7 @@ export default function EmailSender() {
         </fieldset>
 
         {/* ============================================================ */}
-        {/* Boton de envio + feedback                                     */}
+        {/* Boton de envio                                                */}
         {/* ============================================================ */}
         <div className="flex flex-wrap items-center gap-4">
           <button
@@ -491,78 +503,168 @@ export default function EmailSender() {
               'Enviar'
             )}
           </button>
-
-          {(uiState.type === 'success' || uiState.type === 'partial') && (
-            <button
-              type="button"
-              onClick={handleReset}
-              className="rounded-[14px] bg-[var(--neo-bg)] px-5 py-3 text-sm font-medium text-[var(--neo-text-primary)] shadow-neo-raised transition-shadow duration-150 ease-in-out hover:shadow-neo-raised-sm active:shadow-neo-pressed"
-            >
-              Nuevo envio
-            </button>
-          )}
-        </div>
-
-        {/* ---- Feedback (aria-live) ---- */}
-        <div aria-live="polite" aria-atomic="true">
-          {/* SUCCESS */}
-          {uiState.type === 'success' && (
-            <div className="rounded-[16px] bg-[var(--neo-bg)] p-5 shadow-neo-inset" role="status">
-              <p className="font-semibold text-green-600 dark:text-green-400">
-                Enviado a {uiState.sent} destinatario{uiState.sent !== 1 ? 's' : ''}
-              </p>
-            </div>
-          )}
-
-          {/* PARTIAL */}
-          {uiState.type === 'partial' && (
-            <div className="rounded-[16px] bg-[var(--neo-bg)] p-5 shadow-neo-inset" role="status">
-              <p className="font-semibold text-amber-600 dark:text-amber-400">
-                Enviado a {uiState.sent} de {uiState.total} destinatarios — Ver errores
-              </p>
-              {uiState.errors.length > 0 && (
-                <details className="mt-3">
-                  <summary className="cursor-pointer text-sm font-medium text-[var(--neo-text-muted)] hover:text-[var(--neo-text-primary)] transition-colors">
-                    Detalle de {uiState.errors.length} error{uiState.errors.length !== 1 ? 'es' : ''}
-                  </summary>
-                  <ul className="mt-3 space-y-1.5">
-                    {uiState.errors.map((err) => (
-                      <li key={err.email} className="rounded-[12px] bg-[var(--neo-bg)] px-3 py-2 text-sm text-[var(--neo-text-muted)] shadow-neo-inset">
-                        <span className="font-mono font-medium text-[var(--neo-text-primary)]">{err.email}</span>
-                        <span className="mx-2 text-[var(--neo-text-muted)] opacity-50">→</span>
-                        {err.error}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-            </div>
-          )}
-
-          {/* ERROR */}
-          {uiState.type === 'error' && (
-            <div className="rounded-[16px] bg-[var(--neo-bg)] p-5 shadow-neo-inset" role="alert">
-              <div className="flex items-start justify-between gap-3">
-                <p className="font-semibold text-red-600 dark:text-red-400">{uiState.message}</p>
-                {uiState.details && (
-                  <button
-                    type="button"
-                    onClick={() => setShowErrorDetails((prev) => !prev)}
-                    className="shrink-0 rounded-[12px] bg-[var(--neo-bg)] px-2.5 py-1 text-xs font-medium text-[var(--neo-accent)] shadow-neo-raised-sm transition-shadow duration-150 ease-in-out hover:shadow-neo-pressed"
-                  >
-                    {showErrorDetails ? 'Ocultar' : 'Detalles'}
-                  </button>
-                )}
-              </div>
-              {showErrorDetails && uiState.details && (
-                <pre className="mt-3 overflow-x-auto rounded-[12px] bg-[var(--neo-bg)] p-4 text-xs leading-relaxed text-[var(--neo-text-muted)] shadow-neo-inset">
-                  {uiState.details}
-                </pre>
-              )}
-            </div>
-          )}
         </div>
       </form>
+
+      {/* ================================================================ */}
+      {/* POPUP: Feedback de envio                                          */}
+      {/* ================================================================ */}
+      {popupVisible && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--neo-shadow-dark)]/60 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label={
+            uiState.type === 'success' ? 'Envio exitoso' :
+            uiState.type === 'partial' ? 'Envio parcial' :
+            'Error en el envio'
+          }
+        >
+          <div
+            className="animate-popup-in relative flex w-full max-w-md flex-col items-center rounded-[24px] bg-[var(--neo-surface)] p-8 shadow-neo-raised text-center"
+          >
+            {/* ---- Icono ---- */}
+            {uiState.type === 'success' && (
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--neo-bg)] shadow-neo-inset">
+                <svg className="h-8 w-8 text-green-500 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            )}
+            {uiState.type === 'partial' && (
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--neo-bg)] shadow-neo-inset">
+                <svg className="h-8 w-8 text-amber-500 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+            )}
+            {uiState.type === 'error' && (
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--neo-bg)] shadow-neo-inset">
+                <svg className="h-8 w-8 text-red-500 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            )}
+
+            {/* ---- Mensaje ---- */}
+            {uiState.type === 'success' && (
+              <h2 className="text-xl font-bold text-[var(--neo-text-primary)]">
+                Envio exitoso
+              </h2>
+            )}
+            {uiState.type === 'partial' && (
+              <h2 className="text-xl font-bold text-[var(--neo-text-primary)]">
+                Envio parcial
+              </h2>
+            )}
+            {uiState.type === 'error' && (
+              <h2 className="text-xl font-bold text-[var(--neo-text-primary)]">
+                Error
+              </h2>
+            )}
+
+            {uiState.type === 'success' && (
+              <p className="mt-2 text-[var(--neo-text-muted)]">
+                Enviado a {uiState.sent} destinatario{uiState.sent !== 1 ? 's' : ''}
+              </p>
+            )}
+            {uiState.type === 'partial' && (
+              <p className="mt-2 text-[var(--neo-text-muted)]">
+                Enviado a {uiState.sent} de {uiState.total} destinatarios
+              </p>
+            )}
+            {uiState.type === 'error' && (
+              <p className="mt-2 text-[var(--neo-text-muted)]">{uiState.message}</p>
+            )}
+
+            {/* ---- Detalle de errores (partial + error) ---- */}
+            {(uiState.type === 'partial' && uiState.errors.length > 0) && (
+              <details className="mt-4 w-full text-left">
+                <summary className="cursor-pointer text-sm font-medium text-[var(--neo-text-muted)] hover:text-[var(--neo-text-primary)] transition-colors">
+                  Ver detalle de {uiState.errors.length} error{uiState.errors.length !== 1 ? 'es' : ''}
+                </summary>
+                <ul className="mt-3 space-y-1.5">
+                  {uiState.errors.map((err) => (
+                    <li key={err.email} className="rounded-[12px] bg-[var(--neo-bg)] px-3 py-2 text-sm text-[var(--neo-text-muted)] shadow-neo-inset">
+                      <span className="font-mono font-medium text-[var(--neo-text-primary)]">{err.email}</span>
+                      <span className="mx-2 opacity-40">→</span>
+                      {err.error}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+            {uiState.type === 'error' && uiState.details && (
+              <details className="mt-4 w-full text-left">
+                <summary
+                  className="cursor-pointer text-sm font-medium text-[var(--neo-text-muted)] hover:text-[var(--neo-text-primary)] transition-colors"
+                  onClick={() => setShowErrorDetails((prev) => !prev)}
+                >
+                  {showErrorDetails ? 'Ocultar' : 'Ver'} detalles tecnicos
+                </summary>
+                {showErrorDetails && (
+                  <pre className="mt-3 overflow-x-auto rounded-[12px] bg-[var(--neo-bg)] p-3 text-xs leading-relaxed text-[var(--neo-text-muted)] shadow-neo-inset">
+                    {uiState.details}
+                  </pre>
+                )}
+              </details>
+            )}
+
+            {/* ---- Dismiss bar ---- */}
+            <div className="mt-7 flex w-full flex-col gap-3">
+              {uiState.type === 'success' ? (
+                <>
+                  <p className="text-xs text-[var(--neo-text-muted)] opacity-50 animate-pulse">
+                    Este mensaje se cerrara automaticamente
+                  </p>
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="rounded-[14px] bg-[var(--neo-bg)] px-6 py-2.5 text-sm font-semibold text-[var(--neo-accent)] shadow-neo-raised transition-shadow duration-150 ease-in-out hover:shadow-neo-raised-sm active:shadow-neo-pressed"
+                  >
+                    Nuevo envio
+                  </button>
+                </>
+              ) : (
+                <div className="flex gap-3">
+                  {uiState.type === 'error' && (
+                    <button
+                      type="button"
+                      onClick={() => dispatch({ type: 'RESET' })}
+                      className="flex-1 rounded-[14px] bg-[var(--neo-bg)] px-5 py-2.5 text-sm font-medium text-[var(--neo-text-primary)] shadow-neo-raised transition-shadow duration-150 ease-in-out hover:shadow-neo-raised-sm active:shadow-neo-pressed"
+                    >
+                      OK
+                    </button>
+                  )}
+                  {uiState.type === 'partial' && (
+                    <button
+                      type="button"
+                      onClick={() => dispatch({ type: 'RESET' })}
+                      className="flex-1 rounded-[14px] bg-[var(--neo-bg)] px-5 py-2.5 text-sm font-semibold text-[var(--neo-accent)] shadow-neo-raised transition-shadow duration-150 ease-in-out hover:shadow-neo-raised-sm active:shadow-neo-pressed"
+                    >
+                      Entendido
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="flex-1 rounded-[14px] bg-[var(--neo-bg)] px-5 py-2.5 text-sm font-medium text-[var(--neo-text-primary)] shadow-neo-raised transition-shadow duration-150 ease-in-out hover:shadow-neo-raised-sm active:shadow-neo-pressed"
+                  >
+                    Nuevo envio
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* ---- Auto-dismiss progress bar (solo success) ---- */}
+            {uiState.type === 'success' && (
+              <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-[var(--neo-bg)] shadow-neo-inset">
+                <div className="h-full rounded-full bg-green-400 dark:bg-green-500 animate-[shrink_3.5s_ease-in_forwards]" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ================================================================ */}
       {/* MODAL: Vista previa                                               */}
