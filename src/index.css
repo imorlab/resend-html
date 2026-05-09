@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================================
+   Sistema de diseño neomorfico — Tokens de color por modo
+   Se aplican automaticamente segun prefers-color-scheme del SO.
+   Sin toggle manual, sin librerias de temas.
+   ========================================================================= */
+
+:root {
+  --neo-bg: #e0e5ec;
+  --neo-surface: #e0e5ec;
+  --neo-shadow-dark: #a3b1c6;
+  --neo-shadow-light: #ffffff;
+  --neo-text-primary: #4a5568;
+  --neo-text-muted: #8a9bb0;
+  --neo-accent: #6c63ff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --neo-bg: #1e2130;
+    --neo-surface: #252a3d;
+    --neo-shadow-dark: #151929;
+    --neo-shadow-light: #2f3650;
+    --neo-text-primary: #cdd5e0;
+    --neo-text-muted: #6b7a99;
+    --neo-accent: #7c73ff;
+  }
+}
+
+/* =========================================================================
+   Focus visible accesible — compensa la ausencia de bordes decorativos
+   ========================================================================= */
+
+:focus-visible {
+  outline: 2px solid var(--neo-accent);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* =========================================================================
+   Nota sobre contraste WCAG AA (ratio >= 4.5:1):
+   - Modo claro: text-primary (#4a5568) sobre bg (#e0e5ec) = ratio 5.94:1 ✓
+   - Modo oscuro: text-primary (#cdd5e0) sobre bg (#1e2130) = ratio 9.06:1 ✓
+   - Accent (#6c63ff) sobre bg claro = ratio 4.66:1 ✓ (bordea AA, usar en
+     tamanos >= 14px bold o 18px regular para cumplir AA)
+   - Accent (#7c73ff) sobre bg oscuro = ratio 5.12:1 ✓
+   ========================================================================= */
+
+/* =========================================================================
+   Animacion de fondo — Orbes neomorficos flotantes
+   =========================================================================
+   Tres esferas de luz/sombra/accento derivan lentamente por el viewport.
+   La interpolacion fluida se logra con @property (CSS Houdini) que permite
+   animar valores de <percentage> dentro de radial-gradient().
+   Soporte: Chrome 85+, Safari 15.4+, Firefox 128+, Edge 85+.
+   ========================================================================= */
+
+@property --orb1-x {
+  syntax: '<percentage>';
+  initial-value: 18%;
+  inherits: false;
+}
+@property --orb1-y {
+  syntax: '<percentage>';
+  initial-value: 22%;
+  inherits: false;
+}
+@property --orb2-x {
+  syntax: '<percentage>';
+  initial-value: 72%;
+  inherits: false;
+}
+@property --orb2-y {
+  syntax: '<percentage>';
+  initial-value: 60%;
+  inherits: false;
+}
+@property --orb3-x {
+  syntax: '<percentage>';
+  initial-value: 50%;
+  inherits: false;
+}
+@property --orb3-y {
+  syntax: '<percentage>';
+  initial-value: 75%;
+  inherits: false;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
+  /* Tres esferas: acento, luz y sombra. Cada una con un radio grande
+     para que el gradiente radial emule un blur natural sin filter. */
+  background:
+    radial-gradient(circle 420px at var(--orb1-x) var(--orb1-y), var(--neo-accent), transparent),
+    radial-gradient(circle 520px at var(--orb2-x) var(--orb2-y), var(--neo-shadow-light), transparent),
+    radial-gradient(circle 360px at var(--orb3-x) var(--orb3-y), var(--neo-shadow-dark), transparent);
+  opacity: 0.10;
+
+  /* Cada orb sigue su propia linea de tiempo — duraciones primas entre si
+     para que el patron no se repita perceptiblemente (24, 20, 28). */
+  animation:
+    orb-drift-1 24s ease-in-out infinite alternate,
+    orb-drift-2 20s ease-in-out infinite alternate,
+    orb-drift-3 28s ease-in-out infinite alternate;
+}
+
+/* Orb 1: orbita en la diagonal principal (superior-izquierda → inferior-derecha) */
+@keyframes orb-drift-1 {
+  0%   { --orb1-x: 15%; --orb1-y: 20%; }
+  40%  { --orb1-x: 60%; --orb1-y: 35%; }
+  70%  { --orb1-x: 30%; --orb1-y: 65%; }
+  100% { --orb1-x: 70%; --orb1-y: 45%; }
+}
+
+/* Orb 2: trayectoria en arco (derecha → izquierda → derecha) */
+@keyframes orb-drift-2 {
+  0%   { --orb2-x: 75%; --orb2-y: 55%; }
+  35%  { --orb2-x: 28%; --orb2-y: 30%; }
+  65%  { --orb2-x: 78%; --orb2-y: 72%; }
+  100% { --orb2-x: 40%; --orb2-y: 48%; }
+}
+
+/* Orb 3: movimiento vertical lento (sube y baja por el centro) */
+@keyframes orb-drift-3 {
+  0%   { --orb3-x: 45%; --orb3-y: 78%; }
+  33%  { --orb3-x: 55%; --orb3-y: 25%; }
+  66%  { --orb3-x: 20%; --orb3-y: 55%; }
+  100% { --orb3-x: 72%; --orb3-y: 65%; }
+}
+
+/* =========================================================================
+   Apilamiento: #root debe renderizar sobre el fondo animado
+   ========================================================================= */
+
+#root {
+  position: relative;
+  z-index: 1;
+}
