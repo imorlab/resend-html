@@ -280,9 +280,9 @@ export default function EmailSender() {
         noValidate
       >
 
-        {/* ============================================================ */}
+        {/* ================================================== */}
         {/* SECCION A: Contenido HTML                                     */}
-        {/* ============================================================ */}
+        {/* ================================================== */}
         <fieldset>
           <legend className="mb-3 text-lg font-semibold text-[var(--neo-text-primary)]">
             Contenido HTML
