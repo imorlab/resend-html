@@ -139,7 +139,7 @@ function sanitizeAndPreview(html: string): { sanitized: string; preview: string 
 /** Guarda el resultado del envío en la base de datos usando la service_role key. */
 async function persistResult(
   supabaseAdmin: ReturnType<typeof createClient>,
-  payload: { subject: string; recipients: string[]; sanitizedHtml: string; preview: string; status: 'sent' | 'failed' | 'partial'; errors: RecipientError[] }
+  payload: { subject: string; recipients: string[]; sanitizedHtml: string; preview: string; status: 'sent' | 'failed' | 'partial'; errors: RecipientError[]; sentBy?: string | null }
 ): Promise<string | null> {
   const { data, error } = await supabaseAdmin
     .from('sent_emails')
@@ -149,7 +149,7 @@ async function persistResult(
       html_preview: payload.preview,
       status: payload.status,
       error_log: payload.errors,
-      // sent_by queda null cuando se envía desde la Edge Function sin auth de usuario
+      sent_by: payload.sentBy ?? null,
     })
     .select('id')
     .single();
@@ -187,6 +187,19 @@ function getAllowedOrigin(req: Request): string | null {
   return ALLOWED_ORIGINS.find((allowed) => origin === allowed) ?? null;
 }
 
+/** Extrae el UUID del usuario desde el JWT de Supabase Auth (campo sub del payload). */
+function getUserIdFromJWT(req: Request): string | null {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7);
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]!));
+    return payload.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ---- Handler principal de la Edge Function ----
 Deno.serve(async (req: Request) => {
   const allowedOrigin = getAllowedOrigin(req);
@@ -218,6 +231,9 @@ Deno.serve(async (req: Request) => {
       { status: 403, headers: { 'Content-Type': 'application/json' } }
     );
   }
+
+  // Extraer el ID del usuario desde el JWT de Supabase Auth
+  const sentBy = getUserIdFromJWT(req);
 
   // ---- 1. Parsear y validar el payload ----
   let body: unknown;
@@ -318,6 +334,7 @@ Deno.serve(async (req: Request) => {
     preview,
     status,
     errors,
+    sentBy,
   });
 
   // ---- 6. Responder ----

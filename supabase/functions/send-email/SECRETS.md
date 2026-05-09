@@ -22,7 +22,7 @@ supabase secrets set SB_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ## Despliegue de la Edge Function
 
 ```bash
-supabase functions deploy send-email --no-verify-jwt
+supabase functions deploy send-email
 ```
 
-El flag `--no-verify-jwt` omite la verificación de autenticación, ya que el endpoint puede recibir llamadas sin usuario autenticado (la seguridad se delega a RLS en la BD y a la validación del payload).
+La funcion ahora **verifica el JWT** de Supabase Auth. Solo usuarios autenticados pueden enviar emails. El `sent_by` en la tabla `sent_emails` se rellena automaticamente con el UUID del usuario desde el token.

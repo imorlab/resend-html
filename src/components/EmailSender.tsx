@@ -12,6 +12,11 @@
 import { type FormEvent, type DragEvent, type KeyboardEvent, type ChangeEvent, useState, useReducer, useRef, useCallback, useEffect } from 'react';
 import type { UIState, UIAction, SendEmailResponse } from '../types/email';
 
+interface EmailSenderProps {
+  accessToken: string
+  onLogout: () => void
+}
+
 const MAX_RECIPIENTS = 50;
 const MAX_HTML_CHARS = 100_000;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -31,7 +36,7 @@ function uiReducer(_state: UIState, action: UIAction): UIState {
   }
 }
 
-export default function EmailSender() {
+export default function EmailSender({ accessToken, onLogout }: EmailSenderProps) {
   const [htmlContent, setHtmlContent] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [dragError, setDragError] = useState<string | null>(null);
@@ -225,7 +230,7 @@ export default function EmailSender() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
             html: htmlContent,
@@ -259,7 +264,7 @@ export default function EmailSender() {
       const message = err instanceof Error ? err.message : 'Error de conexion';
       dispatch({ type: 'SEND_ERROR', message: `Error de red: ${message}` });
     }
-  }, [htmlContent, recipients, subject]);
+  }, [htmlContent, recipients, subject, accessToken]);
 
   const canSubmit =
     uiState.type === 'idle' &&
@@ -276,13 +281,22 @@ export default function EmailSender() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 p-6">
-      <header>
-        <h1 className="text-2xl font-bold text-[var(--neo-text-primary)]">
-          Envio masivo de emails HTML
-        </h1>
-        <p className="mt-1 text-sm text-[var(--neo-text-muted)]">
-          Redacta tu HTML, añade destinatarios y envia hasta {MAX_RECIPIENTS} emails a traves de Resend.
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--neo-text-primary)]">
+            Envio masivo de emails HTML
+          </h1>
+          <p className="mt-1 text-sm text-[var(--neo-text-muted)]">
+            Redacta tu HTML, añade destinatarios y envia hasta {MAX_RECIPIENTS} emails a traves de Resend.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onLogout}
+          className="shrink-0 rounded-[14px] bg-[var(--neo-bg)] px-4 py-2.5 text-sm font-medium text-[var(--neo-text-muted)] shadow-neo-raised transition-shadow duration-150 ease-in-out hover:text-[var(--neo-text-primary)] hover:shadow-neo-raised-sm active:shadow-neo-pressed"
+        >
+          Cerrar sesion
+        </button>
       </header>
 
       {/* Contenedor principal con efecto neomorfico elevado */}
