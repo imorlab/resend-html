@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
-import Login from './components/Login'
 import EmailSender from './components/EmailSender'
 
-interface AppSession {
+export interface AppSession {
   access_token: string
   email: string
 }
@@ -13,10 +12,9 @@ export default function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Verificar que la sesion almacenada realmente es valida (no expirada ni corrupta)
+    // Verificar que la sesion almacenada realmente es valida
     supabase.auth.getSession().then(async ({ data: { session: storedSession } }) => {
       if (storedSession) {
-        // Validar contra el servidor que el token sigue siendo valido
         const { data: { user }, error } = await supabase.auth.getUser(storedSession.access_token)
         if (user && !error) {
           setSession({
@@ -24,7 +22,6 @@ export default function App() {
             email: user.email ?? '',
           })
         }
-        // Si el token expiro o es invalido: cerrar sesion silenciosamente
       }
       setLoading(false)
     })
@@ -51,6 +48,10 @@ export default function App() {
     setSession(null)
   }
 
+  const handleLoginSuccess = (newSession: AppSession) => {
+    setSession(newSession)
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -62,15 +63,13 @@ export default function App() {
     )
   }
 
-  if (!session) {
-    return <Login onLogin={() => {}} />
-  }
-
   return (
     <EmailSender
-      accessToken={session.access_token}
-      userEmail={session.email}
+      isAuthenticated={!!session}
+      accessToken={session?.access_token ?? ''}
+      userEmail={session?.email ?? ''}
       onLogout={handleLogout}
+      onLoginSuccess={handleLoginSuccess}
     />
   )
 }
