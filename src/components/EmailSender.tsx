@@ -298,12 +298,12 @@ export default function EmailSender({ isAuthenticated, accessToken, userEmail, o
       {/* ================================================================ */}
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--neo-text-primary)]">Envio masivo de emails HTML</h1>
+          <h1 className="text-2xl font-bold text-[var(--neo-text-primary)]">Resend HTML</h1>
           {userEmail ? (
             <p className="mt-0.5 text-sm text-[var(--neo-text-muted)]">{userEmail}</p>
           ) : (
             <p className="mt-0.5 text-sm text-[var(--neo-text-muted)]">
-              Inicia sesion para enviar — puedes escribir el HTML sin registrarte
+              Inicia sesión para enviar — puedes escribir el HTML sin registrarte
             </p>
           )}
         </div>
